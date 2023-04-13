@@ -94,7 +94,7 @@ private:
 // --------------------------
 // | Class Base definitions |
 // --------------------------
-inline Base::~Base(){};
+inline Base::~Base(){}
 template <typename T> inline Ptr<T> Base::sptr() { return Ptr<T>(this); }
 inline Ptr<Base> Base::bptr() { return Ptr<Base>(this); }
 inline Base *Base::rptr() { return this; }
@@ -110,29 +110,29 @@ template <typename T> Ptr<T>::Ptr(T *ptr) {
     throw std::runtime_error("Got nullptr");
   ptr->acquire();
   _ptr = ptr;
-};
+}
 template <typename T> Ptr<T>::~Ptr() {
   _ptr->release();
   if (_ptr->refCount() == 0)
     delete _ptr;
-};
+}
 template <typename T> template <typename U> Ptr<U> Ptr<T>::as() {
   static_assert(is_derived_from<Base, U>::value, "Invalid type provided");
   U *p = dynamic_cast<U *>(_ptr);
   if (p == nullptr)
     throw std::runtime_error("Can't cast to that type");
   return Ptr<U>(p);
-};
-template <typename T> Ptr<T> Ptr<T>::cpy() { return Ptr<T>(_ptr); };
+}
+template <typename T> Ptr<T> Ptr<T>::cpy() { return Ptr<T>(_ptr); }
 template <typename T> template <typename U> Ptr<U> Ptr<T>::sptr() {
   static_assert(is_derived_from<Base, U>::value, "Invalid type provided");
   return Ptr<U>(_ptr);
-};
+}
 template <typename T> Ptr<Base> Ptr<T>::bptr() {
   return Ptr<Base>(_ptr);
-}; // What is the difference between this and casting?
-template <typename T> T *Ptr<T>::rptr() { return _ptr; };
-template <typename T> T *Ptr<T>::operator->() { return _ptr; };
+} // What is the difference between this and casting?
+template <typename T> T *Ptr<T>::rptr() { return _ptr; }
+template <typename T> T *Ptr<T>::operator->() { return _ptr; }
 
 // -----------
 // | Helpers |
