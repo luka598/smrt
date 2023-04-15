@@ -54,8 +54,6 @@ public:
 
   // Pointers
   template <typename T> Ptr<T> sptr();
-  Ptr<Base> bptr();
-  Base *rptr();
 
   // Ref managing
   void acquire();
@@ -77,10 +75,12 @@ public:
   // Constructor & Destructor
   Ptr(T *_ptr);
   ~Ptr();
+  
   // Pointers
   template <typename U> Ptr<U> as();
   Ptr<T> cpy();
   T *rptr();
+
   // Operators
   T *operator->();
 
@@ -93,8 +93,6 @@ private:
 // --------------------------
 inline Base::~Base(){}
 template <typename T> inline Ptr<T> Base::sptr() { return Ptr<T>(this); }
-inline Ptr<Base> Base::bptr() { return Ptr<Base>(this); }
-inline Base *Base::rptr() { return this; }
 inline void Base::acquire() { _refCount++; }
 inline void Base::release() { _refCount--; }
 inline int Base::refCount() { return _refCount; }
