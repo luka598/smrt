@@ -20,137 +20,167 @@
 
 namespace smrt {
 
-// ------------------------------------------------------
-// | Incomplete class declarations and type definitions |
-// ------------------------------------------------------
-class Base;
-template <typename T> class Ptr;
-typedef Ptr<Base> basePtr;
-template <typename T, typename... Args> Ptr<T> make(Args... args);
-template <typename T, typename... Args> basePtr make_base(Args... args);
-template <typename T, typename U, typename... Args>
-Ptr<T> make_as(Args... args);
-template <typename BaseT, typename DerivedT> struct is_derived_from;
+	// ------------------------------------------------------
+	// | Incomplete class declarations and type definitions |
+	// ------------------------------------------------------
+	class Base;
+	template <typename T> class Ptr;
+	typedef Ptr<Base> basePtr;
+	template <typename T, typename... Args> Ptr<T> make(Args... args);
+	template <typename T, typename... Args> basePtr make_base(Args... args);
+	template <typename T, typename U, typename... Args>
+		Ptr<T> make_as(Args... args);
+	template <typename BaseT, typename DerivedT> struct is_derived_from;
+	template <template <typename...> class Template, typename T>
+		struct is_specialization_of;
+	template <template <typename...> class Template, typename... Args>
+		struct is_specialization_of<Template, Template<Args...>>;
 
-// ------------------------------------
-// | Struct is_derived_from definition |
-// -------------------------------------
-template <typename BaseT, typename DerivedT> struct is_derived_from {
-private:
-  static constexpr bool check(const BaseT *) { return true; }
-  static constexpr bool check(...) { return false; }
+	// ------------------------------------
+	// | Struct is_derived_from definition |
+	// -------------------------------------
+	template <typename BaseT, typename DerivedT> struct is_derived_from {
+		private:
+			static constexpr bool check(const BaseT *) { return true; }
+			static constexpr bool check(...) { return false; }
 
-public:
-  static constexpr bool value = check(static_cast<const DerivedT *>(nullptr));
-};
+		public:
+			static constexpr bool value = check(static_cast<const DerivedT *>(nullptr));
+	};
 
-// --------------------------
-// | Class Base declaration |
-// --------------------------
-class Base {
-public:
-  // Constructor & Destructor
-  virtual ~Base();
+	// -------------------------------
+	// | Struct is_sepicalization_of |
+	// -------------------------------
+	template <template <typename...> class Template, typename T>
+		struct is_specialization_of : std::false_type {};
 
-  // Pointers
-  template <typename T> Ptr<T> sptr();
-  Ptr<Base> bptr();
-  Base *rptr();
+	template <template <typename...> class Template, typename... Args>
+		struct is_specialization_of<Template, Template<Args...>> : std::true_type {};
 
-  // Ref managing
-  void acquire();
-  void release();
-  int refCount();
+	// --------------------------
+	// | Class Base declaration |
+	// --------------------------
+	class Base {
+		public:
+			// Constructor & Destructor
+			virtual ~Base();
 
-private:
-  // Ref managing
-  int _refCount = 0;
-};
+			// Pointers
+			template <typename T> Ptr<T> sptr();
+			Ptr<Base> bptr();
+			Base *rptr();
 
-// --------------------------
-// | Class Ptr<T> declaration |
-// --------------------------
-template <typename T> class Ptr {
-  static_assert(is_derived_from<Base, T>::value, "Invalid type provided");
+			// Ref managing
+			void acquire();
+			void release();
+			int refCount();
 
-public:
-  // Constructor & Destructor
-  Ptr(T *_ptr);
-  ~Ptr();
-  // Pointers
-  template <typename U> Ptr<U> as();
-  Ptr<T> cpy();
+		private:
+			// Ref managing
+			int _refCount = 0;
+	};
 
-  template <typename U> Ptr<U> sptr();
-  Ptr<Base> bptr();
-  T *rptr();
-  // ???
-  T *operator->();
+	// --------------------------
+	// | Class Ptr<T> declaration |
+	// --------------------------
+	template <typename T> class Ptr {
+		static_assert(is_derived_from<Base, T>::value, "Invalid type provided");
 
-private:
-  T *_ptr;
-};
+		public:
+		// Constructor & Destructor
+		Ptr(T *_ptr);
+		~Ptr();
 
-// --------------------------
-// | Class Base definitions |
-// --------------------------
-inline Base::~Base(){}
-template <typename T> inline Ptr<T> Base::sptr() { return Ptr<T>(this); }
-inline Ptr<Base> Base::bptr() { return Ptr<Base>(this); }
-inline Base *Base::rptr() { return this; }
-inline void Base::acquire() { _refCount++; }
-inline void Base::release() { _refCount--; }
-inline int Base::refCount() { return _refCount; }
+		// Pointers
+		template <typename U, std::enable_if_t<is_derived_from<Base, U>::value, bool> = true>
+			Ptr<U> as();
+		template <typename U, std::enable_if_t<is_specialization_of<Ptr, U>::value, bool> = true>
+			U as();
+		Ptr<T> cpy();
+		T *rptr();
 
-// ----------------------------
-// | Class Ptr<T> definitions |
-// ----------------------------
-template <typename T> Ptr<T>::Ptr(T *ptr) {
-  if (ptr == nullptr)
-    throw std::runtime_error("Got nullptr");
-  ptr->acquire();
-  _ptr = ptr;
-}
-template <typename T> Ptr<T>::~Ptr() {
-  _ptr->release();
-  if (_ptr->refCount() == 0)
-    delete _ptr;
-}
-template <typename T> template <typename U> Ptr<U> Ptr<T>::as() {
-  static_assert(is_derived_from<Base, U>::value, "Invalid type provided");
-  U *p = dynamic_cast<U *>(_ptr);
-  if (p == nullptr)
-    throw std::runtime_error("Can't cast to that type");
-  return Ptr<U>(p);
-}
-template <typename T> Ptr<T> Ptr<T>::cpy() { return Ptr<T>(_ptr); }
-template <typename T> template <typename U> Ptr<U> Ptr<T>::sptr() {
-  static_assert(is_derived_from<Base, U>::value, "Invalid type provided");
-  return Ptr<U>(_ptr);
-}
-template <typename T> Ptr<Base> Ptr<T>::bptr() {
-  return Ptr<Base>(_ptr);
-} // What is the difference between this and casting?
-template <typename T> T *Ptr<T>::rptr() { return _ptr; }
-template <typename T> T *Ptr<T>::operator->() { return _ptr; }
+		// ???
+		T *operator->();
+		typedef T Type;
 
-// -----------
-// | Helpers |
-// -----------
-template <typename T, typename... Args> Ptr<T> make(Args... args) {
-  static_assert(is_derived_from<Base, T>::value, "Invalid type provided");
-  return Ptr<T>(new T(args...));
-}
+		private:
+		T *_ptr;
+	};
 
-template <typename T, typename... Args> basePtr make_base(Args... args) {
-  static_assert(is_derived_from<Base, T>::value, "Invalid type provided");
-  return Ptr<Base>(new T(args...));
-}
+	// --------------------------
+	// | Class Base definitions |
+	// --------------------------
+	inline Base::~Base() {}
+	template <typename T> inline Ptr<T> Base::sptr() { return Ptr<T>(this); }
+	inline Ptr<Base> Base::bptr() { return Ptr<Base>(this); }
+	inline Base *Base::rptr() { return this; }
+	inline void Base::acquire() { _refCount++; }
+	inline void Base::release() { _refCount--; }
+	inline int Base::refCount() { return _refCount; }
 
-template <typename T, typename U, typename... Args>
-Ptr<T> make_as(Args... args) {
-  static_assert(is_derived_from<Base, T>::value, "Invalid type provided");
-  static_assert(is_derived_from<Base, U>::value, "Invalid type provided");
-  return Ptr<T>(new U(args...));
-}
+	// ----------------------------
+	// | Class Ptr<T> definitions |
+	// ----------------------------
+	template <typename T>
+		Ptr<T>::Ptr(T *ptr) {
+			if (ptr == nullptr)
+				throw std::runtime_error("Got nullptr");
+			ptr->acquire();
+			_ptr = ptr;
+		}
+	template <typename T>
+		Ptr<T>::~Ptr() {
+			_ptr->release();
+			if (_ptr->refCount() == 0)
+				delete _ptr;
+		}
+	template <typename T>
+		template <typename U, std::enable_if_t<is_derived_from<Base, U>::value, bool>>
+		Ptr<U> Ptr<T>::as() {
+			static_assert(is_derived_from<Base, U>::value, "Invalid type provided");
+			U *p = dynamic_cast<U *>(_ptr);
+			if (p == nullptr)
+				throw std::runtime_error("Can't cast to that type");
+			return Ptr<U>(p);
+		}
+
+	template <typename T>
+		template <typename U, std::enable_if_t<is_specialization_of<Ptr, U>::value, bool>>
+		U Ptr<T>::as() {
+			typename U::Type *p = dynamic_cast<typename U::Type *>(_ptr);
+			if (p == nullptr)
+				throw std::runtime_error("Can't cast to that type");
+			return U(p);
+		}
+	template <typename T> Ptr<T> Ptr<T>::cpy() { return Ptr<T>(_ptr); }
+	template <typename T> T *Ptr<T>::rptr() { return _ptr; }
+	template <typename T> T *Ptr<T>::operator->() { return _ptr; }
+
+	// -----------
+	// | Helpers |
+	// -----------
+	template <typename T, typename... Args>
+		Ptr<T> make(Args... args) {
+			static_assert(is_derived_from<Base, T>::value, "Invalid type provided");
+			return Ptr<T>(new T(args...));
+		}
+
+	template <typename T, typename... Args>
+		basePtr make_base(Args... args) {
+			static_assert(is_derived_from<Base, T>::value, "Invalid type provided");
+			return Ptr<Base>(new T(args...));
+		}
+
+	template <typename T, typename U, typename... Args>
+		Ptr<T> make_as(Args... args) {
+			static_assert(is_derived_from<Base, T>::value, "Invalid type provided");
+			static_assert(is_derived_from<Base, U>::value, "Invalid type provided");
+			return Ptr<T>(new U(args...));
+		}
 } // namespace smrt
+#define SMRT_CLASS(name)                                                       \
+	class name##Class;                                                           \
+	typedef smrt::Ptr<name##Class> name;                                         \
+	class name##Class : public smrt::Base
+
+#define SMRT_MAKE(name) smrt::make<name##Class>
