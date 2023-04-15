@@ -80,11 +80,8 @@ public:
   // Pointers
   template <typename U> Ptr<U> as();
   Ptr<T> cpy();
-
-  template <typename U> Ptr<U> sptr();
-  Ptr<Base> bptr();
   T *rptr();
-  // ???
+  // Operators
   T *operator->();
 
 private:
@@ -124,13 +121,6 @@ template <typename T> template <typename U> Ptr<U> Ptr<T>::as() {
   return Ptr<U>(p);
 }
 template <typename T> Ptr<T> Ptr<T>::cpy() { return Ptr<T>(_ptr); }
-template <typename T> template <typename U> Ptr<U> Ptr<T>::sptr() {
-  static_assert(is_derived_from<Base, U>::value, "Invalid type provided");
-  return Ptr<U>(_ptr);
-}
-template <typename T> Ptr<Base> Ptr<T>::bptr() {
-  return Ptr<Base>(_ptr);
-} // What is the difference between this and casting?
 template <typename T> T *Ptr<T>::rptr() { return _ptr; }
 template <typename T> T *Ptr<T>::operator->() { return _ptr; }
 
