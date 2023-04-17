@@ -51,6 +51,9 @@ class Base {
 public:
   // Constructor & Destructor
   virtual ~Base();
+  Base(){};
+  Base(const Base &other) = delete;
+  Base &operator=(const Base &other) = delete;
 
   // Pointers
   template <typename T> Ptr<T> sptr();
@@ -63,6 +66,7 @@ public:
 private:
   // Ref managing
   int _refCount = 0;
+  bool acquired = false;
 };
 
 // --------------------------
@@ -75,14 +79,16 @@ public:
   // Constructor & Destructor
   Ptr(T *_ptr);
   ~Ptr();
-  
+  Ptr(const Ptr &other);
+  Ptr &operator=(const Ptr &other) = delete; // TODO
+
   // Pointers
   template <typename U> Ptr<U> as();
   Ptr<T> cpy();
-  T *rptr();
+  T *rptr() const;
 
   // Operators
-  T *operator->();
+  T *operator->() const;
 
 private:
   T *_ptr;
@@ -91,23 +97,45 @@ private:
 // --------------------------
 // | Class Base definitions |
 // --------------------------
-inline Base::~Base(){}
+inline Base::~Base() {}
 template <typename T> inline Ptr<T> Base::sptr() { return Ptr<T>(this); }
-inline void Base::acquire() { _refCount++; }
-inline void Base::release() { _refCount--; }
+inline void Base::acquire() {
+  if (_refCount == 0 && acquired)
+    throw std::runtime_error("Trying to acquire invalid Base");
+  _refCount++;
+  acquired = true;
+}
+inline void Base::release() {
+  if (_refCount == 0)
+    throw std::runtime_error("Refcount decremented bellow 0");
+  if (!acquired)
+    throw std::runtime_error("Trying to release unacquired Base");
+  _refCount--;
+}
 inline int Base::refCount() { return _refCount; }
 
 // ----------------------------
 // | Class Ptr<T> definitions |
 // ----------------------------
 template <typename T> Ptr<T>::Ptr(T *ptr) {
+  std::cout << "Ptr constructor called " << this << std::endl;
   if (ptr == nullptr)
     throw std::runtime_error("Got nullptr");
   ptr->acquire();
   _ptr = ptr;
 }
+template <typename T> Ptr<T>::Ptr(const Ptr &other) {
+  T *ptr = other.rptr();
+  if (ptr == nullptr)
+    throw std::runtime_error("Got nullptr");
+  ptr->acquire();
+  _ptr = ptr;
+};
+
 template <typename T> Ptr<T>::~Ptr() {
+  std::cout << "Ptr destructor called " << this << std::endl;
   _ptr->release();
+
   if (_ptr->refCount() == 0)
     delete _ptr;
 }
@@ -119,8 +147,8 @@ template <typename T> template <typename U> Ptr<U> Ptr<T>::as() {
   return Ptr<U>(p);
 }
 template <typename T> Ptr<T> Ptr<T>::cpy() { return Ptr<T>(_ptr); }
-template <typename T> T *Ptr<T>::rptr() { return _ptr; }
-template <typename T> T *Ptr<T>::operator->() { return _ptr; }
+template <typename T> T *Ptr<T>::rptr() const { return _ptr; }
+template <typename T> T *Ptr<T>::operator->() const { return _ptr; }
 
 // -----------
 // | Helpers |
