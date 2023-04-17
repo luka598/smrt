@@ -118,7 +118,6 @@ inline int Base::refCount() { return _refCount; }
 // | Class Ptr<T> definitions |
 // ----------------------------
 template <typename T> Ptr<T>::Ptr(T *ptr) {
-  std::cout << "Ptr constructor called " << this << std::endl;
   if (ptr == nullptr)
     throw std::runtime_error("Got nullptr");
   ptr->acquire();
@@ -133,7 +132,6 @@ template <typename T> Ptr<T>::Ptr(const Ptr &other) {
 };
 
 template <typename T> Ptr<T>::~Ptr() {
-  std::cout << "Ptr destructor called " << this << std::endl;
   _ptr->release();
 
   if (_ptr->refCount() == 0)
