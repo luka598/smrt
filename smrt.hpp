@@ -80,7 +80,7 @@ public:
   Ptr(T *_ptr);
   ~Ptr();
   Ptr(const Ptr &other);
-  Ptr<T>& operator=(const Ptr<T>& other);
+  Ptr<T> &operator=(const Ptr<T> &other);
 
   // Pointers
   template <typename U> Ptr<U> as();
@@ -91,6 +91,8 @@ public:
   T *operator->() const;
 
 private:
+  void acquire(T *ptr);
+  void release();
   T *_ptr;
 };
 
@@ -117,27 +119,23 @@ inline int Base::refCount() { return _refCount; }
 // ----------------------------
 // | Class Ptr<T> definitions |
 // ----------------------------
-template <typename T> Ptr<T>::Ptr(T *ptr) {
+template <typename T> Ptr<T>::Ptr(T *ptr) { acquire(ptr); }
+template <typename T> Ptr<T>::Ptr(const Ptr &other) { acquire(other.rptr()); };
+template <typename T> Ptr<T> &Ptr<T>::operator=(const Ptr<T> &other) {
+  if (this != &other) {
+    release();
+    acquire(other.rptr());
+  }
+  return *this;
+}
+template <typename T> Ptr<T>::~Ptr() { release(); }
+template <typename T> void Ptr<T>::acquire(T *ptr) {
   if (ptr == nullptr)
     throw std::runtime_error("Got nullptr");
   ptr->acquire();
   _ptr = ptr;
 }
-template <typename T> Ptr<T>::Ptr(const Ptr &other) {
-  T *ptr = other.rptr();
-  if (ptr == nullptr)
-    throw std::runtime_error("Got nullptr");
-  ptr->acquire();
-  _ptr = ptr;
-};
-template <typename T>
-Ptr<T>& Ptr<T>::operator=(const Ptr<T>& other) {
-    if (this != &other) {
-		_ptr->release();
-    }
-    return other;
-}
-template <typename T> Ptr<T>::~Ptr() {
+template <typename T> void Ptr<T>::release() {
   _ptr->release();
 
   if (_ptr->refCount() == 0)
