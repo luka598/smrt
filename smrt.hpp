@@ -80,7 +80,7 @@ public:
   Ptr(T *_ptr);
   ~Ptr();
   Ptr(const Ptr &other);
-  Ptr &operator=(const Ptr &other) = delete; // TODO
+  Ptr<T>& operator=(const Ptr<T>& other);
 
   // Pointers
   template <typename U> Ptr<U> as();
@@ -130,7 +130,13 @@ template <typename T> Ptr<T>::Ptr(const Ptr &other) {
   ptr->acquire();
   _ptr = ptr;
 };
-
+template <typename T>
+Ptr<T>& Ptr<T>::operator=(const Ptr<T>& other) {
+    if (this != &other) {
+		_ptr->release();
+    }
+    return other;
+}
 template <typename T> Ptr<T>::~Ptr() {
   _ptr->release();
 
