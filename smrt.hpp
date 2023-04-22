@@ -120,7 +120,7 @@ inline int Base::refCount() { return _refCount; }
 // | Class Ptr<T> definitions |
 // ----------------------------
 template <typename T> Ptr<T>::Ptr(T *ptr) { acquire(ptr); }
-template <typename T> Ptr<T>::Ptr(const Ptr &other) { acquire(other.rptr()); };
+template <typename T> Ptr<T>::Ptr(const Ptr &other) { acquire(other.rptr()); }
 template <typename T> Ptr<T> &Ptr<T>::operator=(const Ptr<T> &other) {
   if (this != &other) {
     release();
